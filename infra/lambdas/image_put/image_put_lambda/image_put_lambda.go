@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"image"
-	"image/jpeg"
 	"log"
 	"os"
 	"shared"
@@ -52,7 +50,7 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	}
 
 	// Check if image can be converted to jpeg
-	jpeg, err := tryConvertToJPEG(imageRequest.ImageData)
+	jpeg, err := shared.TryConvertToJPEG(imageRequest.ImageData)
 	if err != nil {
 		log.Printf("Error converting image to JPEG: %v", err)
 		return events.APIGatewayProxyResponse{
@@ -78,25 +76,6 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       `{"message": "Image received, is valid, and has been uploaded to S3."}`,
 	}, nil
-}
-
-// Try to convert the image data to JPEG format
-func tryConvertToJPEG(data []byte) ([]byte, error) {
-	// Decode the image
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a buffer to hold the JPEG-encoded image
-	var buf bytes.Buffer
-	err = jpeg.Encode(&buf, img, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Return the JPEG-encoded data
-	return buf.Bytes(), nil
 }
 
 // Upload the image to Amazon S3

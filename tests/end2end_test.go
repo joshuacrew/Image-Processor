@@ -4,32 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"image"
-	"image/jpeg"
+	"image_put/image_put_lambda"
 	"log"
 	"net/http"
 	"net/url"
+	"shared"
 	"testing"
 )
-
-type ImageRequest struct {
-	ImageData []byte `json:"imageData"`
-	ImageName string `json:"imageName"`
-}
-
-func generateJPG(t *testing.T) []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
-
-	// Create buffers to hold the encoded images
-	jpegBuf := &bytes.Buffer{}
-	// Encode the image to JPEG
-	if err := jpeg.Encode(jpegBuf, img, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	// Return the encoded JPEG as byte slices
-	return jpegBuf.Bytes()
-}
 
 func TestPostImageHandler(t *testing.T) {
 	testCases := []struct {
@@ -40,8 +21,8 @@ func TestPostImageHandler(t *testing.T) {
 	}{
 		{
 			name: "Valid JPEG Image",
-			request: ImageRequest{
-				ImageData: generateJPG(t),
+			request: image_put_lambda.ImageRequest{
+				ImageData: shared.GenerateJPG(t),
 				ImageName: "image.jpg",
 			},
 			expectedStatus:   200,
@@ -49,7 +30,7 @@ func TestPostImageHandler(t *testing.T) {
 		},
 		{
 			name: "Invalid Image Format",
-			request: ImageRequest{
+			request: image_put_lambda.ImageRequest{
 				ImageData: []byte("invalid image data"), // Invalid format
 				ImageName: "invalid.png",
 			},
@@ -99,6 +80,8 @@ func TestPostImageHandler(t *testing.T) {
 }
 
 func TestGetImageHandler(t *testing.T) {
+	rotatedResponse, _ := shared.RotateAndResize(shared.GenerateJPG(t))
+
 	testCases := []struct {
 		name             string
 		queryParams      url.Values
@@ -109,7 +92,13 @@ func TestGetImageHandler(t *testing.T) {
 			name:             "Valid JPEG Image",
 			queryParams:      url.Values{"name": {"image.jpg"}},
 			expectedStatus:   200,
-			expectedResponse: base64.StdEncoding.EncodeToString((generateJPG(t))),
+			expectedResponse: base64.StdEncoding.EncodeToString((shared.GenerateJPG(t))),
+		},
+		{
+			name:             "Valid JPEG Image with rotate",
+			queryParams:      url.Values{"name": {"image.jpg"}, "rotate": {"true"}},
+			expectedStatus:   200,
+			expectedResponse: base64.StdEncoding.EncodeToString(rotatedResponse),
 		},
 		{
 			name:             "Image Not Found",

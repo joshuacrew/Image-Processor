@@ -75,6 +75,27 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 		}, readErr
 	}
 
+	// Check if the 'rotate' query parameter is present and set to "true"
+	rotateParam, ok := request.QueryStringParameters["rotate"]
+	if ok && rotateParam == "true" {
+		log.Println("Rotating image by 180 degrees")
+		rotatedImageBytes, err := shared.RotateAndResize(body)
+		if err != nil {
+			log.Printf("Error rotating and resizing: %v", err)
+			return events.APIGatewayProxyResponse{
+				StatusCode: 500,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       `{"message": "Failed to rotate and resize"}`,
+			}, err
+		}
+
+		return events.APIGatewayProxyResponse{
+			StatusCode: 200,
+			Headers:    map[string]string{"Content-Type": "image/jpeg"},
+			Body:       base64.StdEncoding.EncodeToString(rotatedImageBytes),
+		}, nil
+	}
+
 	// Build the response
 	response := events.APIGatewayProxyResponse{
 		StatusCode: 200,

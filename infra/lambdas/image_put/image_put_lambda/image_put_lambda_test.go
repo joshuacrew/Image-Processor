@@ -1,91 +1,15 @@
 package image_put_lambda
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"image"
-	"image/jpeg"
-	"image/png"
 	"shared"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
-
-func generateJPG(t *testing.T) []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
-
-	// Create buffers to hold the encoded images
-	jpegBuf := &bytes.Buffer{}
-	// Encode the image to JPEG
-	if err := jpeg.Encode(jpegBuf, img, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	// Return the encoded JPEG as byte slices
-	return jpegBuf.Bytes()
-}
-
-func generatePNG(t *testing.T) []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
-
-	// Create buffers to hold the encoded images
-	jpegBuf := &bytes.Buffer{}
-	// Encode the image to PNG
-	if err := png.Encode(jpegBuf, img); err != nil {
-		t.Fatal(err)
-	}
-
-	// Return the encoded PNG as byte slices
-	return jpegBuf.Bytes()
-}
-
-func TestTryConvertToJPEG(t *testing.T) {
-	testCases := []struct {
-		name          string
-		imageData     []byte
-		expectSuccess bool
-	}{
-		{
-			name:          "ValidJPEGImage",
-			imageData:     generateJPG(t), // Valid JPEG data
-			expectSuccess: true,
-		},
-		{
-			name:          "ValidPNGImage",
-			imageData:     generatePNG(t), // Valid PNG data
-			expectSuccess: true,
-		},
-		{
-			name:          "InvalidImage",
-			imageData:     []byte{0x01, 0x02, 0x03, 0x04, 0x05}, // Invalid image data
-			expectSuccess: false,
-		},
-		{
-			name:          "InvalidFormatImage",
-			imageData:     []byte("This is not an image"), // Non-image data
-			expectSuccess: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := tryConvertToJPEG(tc.imageData)
-			if tc.expectSuccess {
-				if err != nil {
-					t.Errorf("Expected successful conversion but got an error: %v", err)
-				}
-			} else {
-				if err == nil {
-					t.Error("Expected an error but conversion was successful")
-				}
-			}
-		})
-	}
-}
 
 type mockPutObjectAPI func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 
@@ -147,7 +71,7 @@ func TestHandler(t *testing.T) {
 	}{
 		{
 			name:            "ValidImageRequest",
-			requestBody:     ImageRequest{generateJPG(t), "image.jpg"},
+			requestBody:     ImageRequest{shared.GenerateJPG(t), "image.jpg"},
 			expectStatus:    200,
 			expectResponse:  `{"message": "Image received, is valid, and has been uploaded to S3."}`,
 			s3ResponseError: nil,
@@ -178,7 +102,7 @@ func TestHandler(t *testing.T) {
 		},
 		{
 			name:            "s3Error",
-			requestBody:     ImageRequest{generateJPG(t), "image.jpg"},
+			requestBody:     ImageRequest{shared.GenerateJPG(t), "image.jpg"},
 			expectStatus:    500,
 			expectResponse:  `{"message": "Error uploading image to S3"}`,
 			s3ResponseError: errors.New("S3 upload failed"),

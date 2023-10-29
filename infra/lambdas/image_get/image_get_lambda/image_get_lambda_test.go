@@ -60,33 +60,52 @@ func TestGetFromS3(t *testing.T) {
 }
 
 func TestHandleRequest(t *testing.T) {
+	rotatedResponse, _ := shared.RotateAndResize(shared.GenerateJPG(t))
+
 	tests := []struct {
 		name            string
 		pathParams      map[string]string
 		expectStatus    int
 		expectResponse  string
+		s3Response      []byte
 		s3ResponseError error
+		expectError     bool
 	}{
 		{
-			name:            "Successful request",
-			pathParams:      map[string]string{"name": "example.jpg"},
-			expectStatus:    200,
-			expectResponse:  base64.StdEncoding.EncodeToString([]byte("fake image content")),
-			s3ResponseError: nil,
+			name:           "Successful request",
+			pathParams:     map[string]string{"name": "example.jpg"},
+			expectStatus:   200,
+			s3Response:     []byte("fake image content"),
+			expectResponse: base64.StdEncoding.EncodeToString([]byte("fake image content")),
 		},
 		{
-			name:            "Missing 'name' parameter in path",
-			pathParams:      map[string]string{"invalid": "invalid"},
-			expectStatus:    400,
-			expectResponse:  `{"message": "Missing 'name' parameter in the URL path"}`,
-			s3ResponseError: nil,
+			name:           "Successful request with rotate",
+			pathParams:     map[string]string{"name": "example.jpg", "rotate": "true"},
+			expectStatus:   200,
+			s3Response:     shared.GenerateJPG(t),
+			expectResponse: base64.StdEncoding.EncodeToString(rotatedResponse),
+		},
+		{
+			name:           "Unuccessful request with rotate",
+			pathParams:     map[string]string{"name": "example.jpg", "rotate": "true"},
+			expectStatus:   500,
+			s3Response:     []byte("fake image content"),
+			expectResponse: `{"message": "Failed to rotate and resize"}`,
+			expectError:    true,
+		},
+		{
+			name:           "Missing 'name' parameter in path",
+			pathParams:     map[string]string{"invalid": "invalid"},
+			expectStatus:   400,
+			expectResponse: `{"message": "Missing 'name' parameter in the URL path"}`,
 		},
 		{
 			name:            "Failed to retrieve object from S3",
 			pathParams:      map[string]string{"name": "example.jpg"},
 			expectStatus:    500,
 			expectResponse:  `{"message": "Failed to retrieve object from S3"}`,
-			s3ResponseError: errors.New("The specified key does not exist."),
+			s3ResponseError: errors.New("ERROR"),
+			expectError:     true,
 		},
 	}
 
@@ -95,7 +114,7 @@ func TestHandleRequest(t *testing.T) {
 			client := func() shared.S3ObjectAPI {
 				return mockGetObjectAPI(func(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 					return &s3.GetObjectOutput{
-						Body: io.NopCloser(bytes.NewReader([]byte("fake image content"))),
+						Body: io.NopCloser(bytes.NewReader(tc.s3Response)),
 					}, tc.s3ResponseError
 				})
 			}
@@ -107,7 +126,7 @@ func TestHandleRequest(t *testing.T) {
 			}
 
 			response, err := HandleRequest(context.Background(), request)
-			if err != nil && tc.s3ResponseError == nil {
+			if err != nil && !tc.expectError {
 				t.Errorf("Handler returned an error: %v", err)
 			}
 
