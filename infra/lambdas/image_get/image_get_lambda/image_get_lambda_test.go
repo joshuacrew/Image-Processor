@@ -59,6 +59,8 @@ func TestGetFromS3(t *testing.T) {
 	}
 }
 
+var AUTH_KEY = "eyJraWQiOiJVQmFicGdYN0l6d2hDbmVIelZLQWtEMjFEVlB1TXc1S25VTUtFUEh4TTFBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIzZGViMjBhYS1mZTczLTQwNjEtODg2ZS0xNzViNWY0M2NhYzEiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTIuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0yX3RYcjlMdG9KciIsImNvZ25pdG86dXNlcm5hbWUiOiJtZWRpYWZseSIsIm9yaWdpbl9qdGkiOiIwMWRmNmY1ZC1jYWJiLTQ0NGEtYThjYy0wYjdmNjFhNWZmM2IiLCJhdWQiOiIybW85am4ycjU2cDNjNWxmdjgyOW9wcDdmbyIsImV2ZW50X2lkIjoiMzhmZGU1MmUtN2Y3ZC00NWU0LTkzNzctODY3OTk4NjA2ODlkIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2OTg2OTE4ODMsIm5hbWUiOiJ0ZXN0IiwiZXhwIjoxNjk4Njk1NDgzLCJpYXQiOjE2OTg2OTE4ODMsImp0aSI6Ijg0ZjkzMDk3LThiNTYtNDM3OS04YTYxLTlmODBjYjdkNDIzZiIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSJ9.F7-BUc25TvUFFTv4aAirsuyX45LxKyWop7sFqrmtfyi0kHzatzhihM8pcWlLmcJNuPmzQgx8u60XDBHKe5zeyHi4IKD1sMMAjESmfLX3lQ6Fm1uSLzVqRQDUxDi_BZRyK-stCOWH26uAnyqVQW9shPswIUv8LubjGLa4mYYXSYbViUy5umXldPXo8b5U4Ex0n_n9EhaSGYmJ7juNHOJEHSiCepIOZMFyU3vwbz37N9JAYLGTXDJiYGjFQqR7FVuSJLldzc9TsjGM3bzagGDdnLgoU29zmt7LgFAu0xPUnQJaOMbSgQydJmLEnLDi--1cvC9-XVoXCYMg4vfCBsXn-w"
+
 func TestHandleRequest(t *testing.T) {
 	rotatedResponse, _ := shared.RotateAndResize(shared.GenerateJPG(t))
 
@@ -70,6 +72,7 @@ func TestHandleRequest(t *testing.T) {
 		s3Response      []byte
 		s3ResponseError error
 		expectError     bool
+		authKey         string
 	}{
 		{
 			name:           "Successful request",
@@ -77,6 +80,7 @@ func TestHandleRequest(t *testing.T) {
 			expectStatus:   200,
 			s3Response:     []byte("fake image content"),
 			expectResponse: base64.StdEncoding.EncodeToString([]byte("fake image content")),
+			authKey:        AUTH_KEY,
 		},
 		{
 			name:           "Successful request with rotate",
@@ -84,6 +88,7 @@ func TestHandleRequest(t *testing.T) {
 			expectStatus:   200,
 			s3Response:     shared.GenerateJPG(t),
 			expectResponse: base64.StdEncoding.EncodeToString(rotatedResponse),
+			authKey:        AUTH_KEY,
 		},
 		{
 			name:           "Unuccessful request with rotate",
@@ -92,12 +97,14 @@ func TestHandleRequest(t *testing.T) {
 			s3Response:     []byte("fake image content"),
 			expectResponse: `{"message": "Failed to rotate and resize"}`,
 			expectError:    true,
+			authKey:        AUTH_KEY,
 		},
 		{
 			name:           "Missing 'name' parameter in path",
 			pathParams:     map[string]string{"invalid": "invalid"},
 			expectStatus:   400,
 			expectResponse: `{"message": "Missing 'name' parameter in the URL path"}`,
+			authKey:        AUTH_KEY,
 		},
 		{
 			name:            "Failed to retrieve object from S3",
@@ -106,6 +113,15 @@ func TestHandleRequest(t *testing.T) {
 			expectResponse:  `{"message": "Failed to retrieve object from S3"}`,
 			s3ResponseError: errors.New("ERROR"),
 			expectError:     true,
+			authKey:         AUTH_KEY,
+		},
+		{
+			name:           "Failed to authorize",
+			pathParams:     map[string]string{"name": "example.jpg"},
+			expectStatus:   401,
+			expectResponse: `{"message": "Unauthorized"}`,
+			expectError:    true,
+			authKey:        "abcdef",
 		},
 	}
 
@@ -123,6 +139,9 @@ func TestHandleRequest(t *testing.T) {
 
 			request := events.APIGatewayProxyRequest{
 				QueryStringParameters: tc.pathParams,
+				Headers: map[string]string{
+					"Authorization": tc.authKey,
+				},
 			}
 
 			response, err := HandleRequest(context.Background(), request)

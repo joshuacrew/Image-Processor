@@ -28,7 +28,21 @@ func init() {
 	}
 }
 
+var jwksURL = "https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_tXr9LtoJr/.well-known/jwks.json"
+
 func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Check if the token is valid
+	err := shared.HandleAuth(request.Headers, jwksURL)
+	if err != nil {
+		// Handle authentication error
+		log.Printf("Authentication error: %v", err)
+		return events.APIGatewayProxyResponse{
+			StatusCode: 401, // Unauthorized
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"message": "Unauthorized"}`,
+		}, nil
+	}
+
 	// Unmarshal the request body into an ImageRequest struct
 	var imageRequest ImageRequest
 	if err := json.Unmarshal([]byte(request.Body), &imageRequest); err != nil {
