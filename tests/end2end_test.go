@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+var api_gateway_url = "https://9v3i8t156j.execute-api.eu-west-2.amazonaws.com/dev/images/"
+
 func TestPostImageHandler(t *testing.T) {
 	testCases := []struct {
 		name             string
@@ -47,13 +49,11 @@ func TestPostImageHandler(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			url := "https://ca2y5dnlsm2roqr43ll4k47wui0nlyxv.lambda-url.eu-west-2.on.aws/"
-
 			// Create a request body
 			bodyJSON, _ := json.Marshal(tc.request)
 
 			// Make a POST request to the URL
-			resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyJSON))
+			resp, err := http.Post(api_gateway_url, "application/json", bytes.NewBuffer(bodyJSON))
 			if err != nil {
 				t.Fatalf("Failed to make the POST request: %v", err)
 			}
@@ -116,7 +116,7 @@ func TestGetImageHandler(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			url, err := url.Parse("https://2y5qt672eeqa4snba4p7kdaa6m0xkmsw.lambda-url.eu-west-2.on.aws/")
+			url, err := url.Parse(api_gateway_url)
 			if err != nil {
 				log.Fatal(err)
 			}
