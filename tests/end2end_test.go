@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-var api_gateway_url = "https://9v3i8t156j.execute-api.eu-west-2.amazonaws.com/dev/images/"
+var api_gateway_url = "https://suez8r5h95.execute-api.eu-west-2.amazonaws.com/dev/images/"
 
 func TestPostImageHandler(t *testing.T) {
 	testCases := []struct {
