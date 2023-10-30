@@ -13,6 +13,7 @@ import (
 )
 
 var api_gateway_url = "https://suez8r5h95.execute-api.eu-west-2.amazonaws.com/dev/images/"
+var auth_token = "eyJraWQiOiJVQmFicGdYN0l6d2hDbmVIelZLQWtEMjFEVlB1TXc1S25VTUtFUEh4TTFBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIzZGViMjBhYS1mZTczLTQwNjEtODg2ZS0xNzViNWY0M2NhYzEiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTIuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0yX3RYcjlMdG9KciIsImNvZ25pdG86dXNlcm5hbWUiOiJtZWRpYWZseSIsIm9yaWdpbl9qdGkiOiIwMWRmNmY1ZC1jYWJiLTQ0NGEtYThjYy0wYjdmNjFhNWZmM2IiLCJhdWQiOiIybW85am4ycjU2cDNjNWxmdjgyOW9wcDdmbyIsImV2ZW50X2lkIjoiMzhmZGU1MmUtN2Y3ZC00NWU0LTkzNzctODY3OTk4NjA2ODlkIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2OTg2OTE4ODMsIm5hbWUiOiJ0ZXN0IiwiZXhwIjoxNjk4Njk1NDgzLCJpYXQiOjE2OTg2OTE4ODMsImp0aSI6Ijg0ZjkzMDk3LThiNTYtNDM3OS04YTYxLTlmODBjYjdkNDIzZiIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSJ9.F7-BUc25TvUFFTv4aAirsuyX45LxKyWop7sFqrmtfyi0kHzatzhihM8pcWlLmcJNuPmzQgx8u60XDBHKe5zeyHi4IKD1sMMAjESmfLX3lQ6Fm1uSLzVqRQDUxDi_BZRyK-stCOWH26uAnyqVQW9shPswIUv8LubjGLa4mYYXSYbViUy5umXldPXo8b5U4Ex0n_n9EhaSGYmJ7juNHOJEHSiCepIOZMFyU3vwbz37N9JAYLGTXDJiYGjFQqR7FVuSJLldzc9TsjGM3bzagGDdnLgoU29zmt7LgFAu0xPUnQJaOMbSgQydJmLEnLDi--1cvC9-XVoXCYMg4vfCBsXn-w"
 
 func TestPostImageHandler(t *testing.T) {
 	testCases := []struct {
@@ -52,8 +53,14 @@ func TestPostImageHandler(t *testing.T) {
 			// Create a request body
 			bodyJSON, _ := json.Marshal(tc.request)
 
-			// Make a POST request to the URL
-			resp, err := http.Post(api_gateway_url, "application/json", bytes.NewBuffer(bodyJSON))
+			// Create the request with the Authorization header
+			req, err := http.NewRequest("POST", api_gateway_url, bytes.NewBuffer(bodyJSON))
+			if err != nil {
+				t.Fatalf("Failed to create the request: %v", err)
+			}
+			req.Header.Add("Authorization", auth_token)
+
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("Failed to make the POST request: %v", err)
 			}
@@ -122,8 +129,13 @@ func TestGetImageHandler(t *testing.T) {
 			}
 			url.RawQuery = tc.queryParams.Encode()
 
-			// Make a GET request to the URL
-			resp, err := http.Get(url.String())
+			req, err := http.NewRequest("GET", url.String(), nil)
+			if err != nil {
+				t.Fatalf("Failed to create the request: %v", err)
+			}
+			req.Header.Add("Authorization", auth_token)
+
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("Failed to make the GET request: %v", err)
 			}

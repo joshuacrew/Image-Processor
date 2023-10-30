@@ -172,6 +172,33 @@ resource "aws_lambda_permission" "get_image_lambda_permissions" {
   source_arn = "arn:aws:execute-api:eu-west-2:823841155913:${aws_api_gateway_rest_api.image_processing_api.id}/*/${aws_api_gateway_method.get_images_method.http_method}${aws_api_gateway_resource.images_resource.path}"
 }
 
+resource "aws_cognito_user_pool" "image_processing_user_pool" {
+  name                     = "image-processing-user-pool"
+  auto_verified_attributes = ["email"]
+  alias_attributes         = ["email"]
+  password_policy {
+    minimum_length = 8
+  }
+}
+
+resource "aws_cognito_user_pool_client" "image_processing_pool_client" {
+  name                = "image-processing-user-pool-client"
+  explicit_auth_flows = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+
+  token_validity_units {
+     id_token      = "days"
+  }
+
+  user_pool_id = aws_cognito_user_pool.image_processing_user_pool.id
+}
+
+resource "aws_api_gateway_authorizer" "cognito_authorizer" {
+  name          = "cognito-authorizer"
+  rest_api_id   = aws_api_gateway_rest_api.image_processing_api.id
+  type          = "COGNITO_USER_POOLS"
+  provider_arns = [aws_cognito_user_pool.image_processing_user_pool.arn]
+}
+
 resource "aws_api_gateway_rest_api" "image_processing_api" {
   name        = "image-processing-api"
   description = "Image Processing API"
@@ -187,14 +214,24 @@ resource "aws_api_gateway_method" "post_images_method" {
   rest_api_id   = aws_api_gateway_rest_api.image_processing_api.id
   resource_id   = aws_api_gateway_resource.images_resource.id
   http_method   = "POST"
-  authorization = "NONE" # Change this to COGNITO_USER_POOLS
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito_authorizer.id
+
+  request_parameters = {
+    "method.request.path.proxy" = true,
+  }
 }
 
 resource "aws_api_gateway_method" "get_images_method" {
   rest_api_id   = aws_api_gateway_rest_api.image_processing_api.id
   resource_id   = aws_api_gateway_resource.images_resource.id
   http_method   = "GET"
-  authorization = "NONE" # Change this to COGNITO_USER_POOLS
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito_authorizer.id
+
+  request_parameters = {
+    "method.request.path.proxy" = true,
+  }
 }
 
 resource "aws_api_gateway_integration" "post_integration" {
@@ -250,6 +287,10 @@ resource "aws_api_gateway_deployment" "dev_deployment" {
 
 output "api_gateway_invoke_url" {
   value = aws_api_gateway_deployment.dev_deployment.invoke_url
+}
+
+output "aws_cognito_user_pool_client_id" {
+  value = aws_cognito_user_pool_client.image_processing_pool_client.user_pool_id
 }
 
 terraform {
