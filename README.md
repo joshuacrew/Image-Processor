@@ -16,7 +16,7 @@ Authentication is complete and working, but so far has not been merged to 'main'
 
 I tried to build this solution incrementally, with a focus on a working demonstrable solution at each commit. This meant I built the solution as follows:
 
-1. Add ability to store images in S3 via Lambda.
+1. Add functionality to store images in S3 via Lambda.
 2. Add functionality to retrieve an image from S3 via Lambda.
 3. Add functionality to resize and rotate the image.
 4. Add an API Gateway to consolidate routing and provide a platform for introducing Cognito and caching in later commits.
