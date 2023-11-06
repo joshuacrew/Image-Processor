@@ -256,7 +256,7 @@ terraform {
   cloud {
     organization = "tf-org-jgcrew"
     workspaces {
-      name = "mediafly-image-processor"
+      name = "image-processor"
     }
   }
 }
